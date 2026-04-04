@@ -7,10 +7,10 @@ import SubmitSection from '../components/SubmitSection';
 
 export default function UserConfessionPage() {
   const [charCount, setCharCount] = useState(0);
+  const [confessionText, setConfessionText] = useState('');
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 py-8 px-4 overflow-hidden">
-      
       {/* floating background blobs */}
       <div className="absolute top-10 left-10 h-40 w-40 rounded-full bg-violet-300/20 blur-3xl animate-pulse"></div>
       <div className="absolute bottom-20 right-10 h-52 w-52 rounded-full bg-pink-300/20 blur-3xl animate-pulse"></div>
@@ -38,13 +38,15 @@ export default function UserConfessionPage() {
         <ConfessionForm
           charCount={charCount}
           setCharCount={setCharCount}
+          confessionText={confessionText}
+          setConfessionText={setConfessionText}
         />
 
         <NicknameInput />
 
         <MoodSelector />
 
-        <SubmitSection />
+        <SubmitSection confessionText={confessionText} />
       </div>
     </div>
   );

@@ -1,9 +1,9 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-export default function SubmitSection() {
-  const [showModal, setShowModal] = useState(false);
-  const [confessionText, setConfessionText] = useState('');
+export default function SubmitSection({ confessionText }) {
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const submitConfession = async () => {
     if (!confessionText.trim()) {
@@ -12,10 +12,11 @@ export default function SubmitSection() {
     }
 
     try {
+      console.log('API URL:', import.meta.env.VITE_API_URL);
       setLoading(true);
 
       const response = await fetch(
-        'http://localhost:5000/api/confessions/submit',
+        `${import.meta.env.VITE_API_URL}/api/confessions/submit`,
         {
           method: 'POST',
           headers: {
@@ -27,14 +28,27 @@ export default function SubmitSection() {
         },
       );
 
+      console.log('STATUS:', response.status);
+
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.status}`);
+      }
+
       const data = await response.json();
       console.log(data);
 
       if (data.success) {
-        setShowModal(true);
-        setConfessionText('');
+        navigate('/success', {
+          state: {
+            confessionNo: data.confessionNo,
+            queueAhead: data.queueAhead,
+            eta: data.estimatedPostTime,
+          },
+        });
       } else {
-        alert('Submission failed');
+        {
+          alert('Submission failed');
+        }
       }
     } catch (error) {
       console.error(error);
@@ -44,10 +58,29 @@ export default function SubmitSection() {
     }
   };
 
-  const handleSubmit = () => {
-    submitConfession();
-  };
+  const handleSubmit = async () => {
+    const options = {
+      key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+      amount: 200, // ₹2
+      currency: 'INR',
+      name: 'CONFESSION WALLAH',
+      description: 'Confession Submission',
+      handler: async function (response) {
+        console.log('Payment Success:', response);
 
+        await submitConfession();
+      },
+      prefill: {
+        name: 'Anonymous User',
+      },
+      theme: {
+        color: '#7c3aed',
+      },
+    };
+
+    const rzp = new window.Razorpay(options);
+    rzp.open();
+  };
   return (
     <>
       <div className="rounded-3xl backdrop-blur-lg bg-white/70 shadow-lg p-6">
@@ -57,43 +90,44 @@ export default function SubmitSection() {
           Once you submit, your secret becomes lighter 💜
         </p>
 
-        <textarea
-          value={confessionText}
-          onChange={(e) => setConfessionText(e.target.value)}
-          placeholder="Write your confession here..."
-          rows={5}
-          className="mt-4 w-full rounded-2xl border border-violet-200 p-4 outline-none focus:ring-2 focus:ring-violet-400"
-        />
+        <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50 p-4 text-sm leading-7 text-gray-700">
+          <p>
+            💌 Please wait — after submission we’ll instantly show your
+            <span className="font-semibold text-violet-700">
+              {' '}
+              Confession Number
+            </span>{' '}
+            and the
+            <span className="font-semibold text-violet-700">
+              {' '}
+              estimated posting time
+            </span>
+            .
+          </p>
+
+          <p className="mt-3">
+            🔒 Your privacy will remain completely secret and secure.
+          </p>
+
+          <p className="mt-3 text-red-500 font-medium">
+            ⚠️ Once submitted, this confession cannot be edited.
+          </p>
+        </div>
 
         <button
           onClick={handleSubmit}
           disabled={loading}
           className="mt-6 w-full rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 py-4 text-white font-semibold shadow-lg hover:scale-[1.02] transition disabled:opacity-50"
         >
-          {loading ? 'Submitting...' : 'Pay ₹2 & Submit'}
+          {loading ? (
+            <span className="flex items-center justify-center">
+              Submitting<span className="animate-bounce ml-1">...</span>
+            </span>
+          ) : (
+            'Pay ₹2 & Submit'
+          )}
         </button>
       </div>
-
-      {showModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center animate-fadeIn">
-            <h2 className="text-2xl font-bold text-violet-700">
-              💌 Submitted Successfully
-            </h2>
-
-            <p className="mt-3 text-gray-600">
-              Your confession has been received.
-            </p>
-
-            <button
-              onClick={() => setShowModal(false)}
-              className="mt-6 px-6 py-3 rounded-2xl bg-violet-600 text-white"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </>
   );
 }
