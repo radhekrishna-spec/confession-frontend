@@ -67,6 +67,7 @@ export default function SubmitSection({ confessionText }) {
       description: 'Confession Submission',
       handler: async function (response) {
         console.log('Payment Success:', response);
+        sessionStorage.removeItem('confessionDetails');
 
         navigate('/success', {
           state: {
