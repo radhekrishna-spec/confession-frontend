@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import ConfessionHero from '../components/ConfessionHero';
 import ConfessionForm from '../components/ConfessionForm';
-import NicknameInput from '../components/NicknameInput';
+import ConfessionHero from '../components/ConfessionHero';
 import MoodSelector from '../components/MoodSelector';
+import NicknameInput from '../components/NicknameInput';
 import SubmitSection from '../components/SubmitSection';
-import SubmitConfession from '../SubmitConfession';
 
 export default function UserConfessionPage() {
   const [charCount, setCharCount] = useState(0);
