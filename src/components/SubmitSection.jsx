@@ -55,6 +55,9 @@ export default function SubmitSection({ confessionText }) {
   };
 
   const handleSubmit = async () => {
+    if (loading) return;
+
+    setLoading(true);
     const options = {
       key: import.meta.env.VITE_RAZORPAY_KEY_ID,
       amount: 200, // ₹2
