@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 export default function SuccessPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const intervalRef = useRef(null);
 
   const initialDetails = useMemo(() => {
     try {
@@ -13,65 +14,70 @@ export default function SuccessPage() {
         null
       );
     } catch {
-      return location.state || null;
+      return null;
     }
   }, [location.state]);
 
   const [details, setDetails] = useState(initialDetails);
   const [showLoader, setShowLoader] = useState(false);
-  const [showDetails, setShowDetails] = useState(!!initialDetails);
+  const [showDetails, setShowDetails] = useState(false);
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    if (!details) {
-      navigate('/');
-      return;
+    if (!details && !showLoader) {
+      // stay on success page
     }
+  }, [details, showLoader]);
 
-    // keep session safe for reload
-    sessionStorage.setItem(
-      'confessionDetails',
-      JSON.stringify(details)
-    );
-  }, [details, navigate]);
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
 
   const handleViewDetails = () => {
     setShowLoader(true);
     setShowDetails(false);
     setProgress(0);
 
-    let value = 0;
-
-    const interval = setInterval(() => {
-      value += 5;
-      setProgress(value);
-
-      if (value >= 100) {
-        clearInterval(interval);
+    intervalRef.current = setInterval(() => {
+      setProgress((prev) => {
+        let next = prev < 95 ? prev + 5 : prev;
 
         try {
-          const saved = JSON.parse(
-            sessionStorage.getItem('confessionDetails')
-          );
+          const saved = JSON.parse(sessionStorage.getItem('confessionDetails'));
 
-          if (saved) {
-            setDetails(saved);
+          if (
+            saved &&
+            saved.confessionNo &&
+            saved.queueAhead !== undefined &&
+            saved.eta
+          ) {
+            clearInterval(intervalRef.current);
+
+            setTimeout(() => {
+              setProgress(100);
+              setDetails(saved);
+
+              setTimeout(() => {
+                setShowLoader(false);
+                setShowDetails(true);
+              }, 300);
+            }, 200);
+
+            return 100;
           }
         } catch {}
 
-        setShowLoader(false);
-        setShowDetails(true);
-      }
-    }, 80);
+        return next;
+      });
+    }, 200);
   };
-
-  if (!details) return null;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-100 via-white to-purple-100 px-4 py-10">
       <div className="relative bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl text-center max-w-md w-full border border-violet-100 overflow-hidden">
-
-        {/* background glow */}
+        {/* glow */}
         <div className="absolute -top-10 -left-10 h-36 w-36 rounded-full bg-violet-300 opacity-20 blur-3xl" />
         <div className="absolute -bottom-10 -right-10 h-36 w-36 rounded-full bg-purple-300 opacity-20 blur-3xl" />
 
@@ -93,17 +99,17 @@ export default function SuccessPage() {
           </p>
         </div>
 
-        {/* pre details buttons */}
-        {!showDetails && !showLoader && (
-          <div className="relative z-10 mt-6">
+        {/* instruction box */}
+        {!showLoader && !showDetails && (
+          <div className="mt-6">
             <div className="rounded-2xl bg-violet-50 border border-violet-100 p-4 text-sm text-gray-600 leading-6">
-              ⏳ Tap below to check your confession number, queue position and
-              estimated posting time.
+              📋 If you want to check your confession number, queue ahead and
+              expected post time, click the button below.
             </div>
 
             <button
               onClick={handleViewDetails}
-              className="mt-6 w-full rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 py-3 text-white font-semibold shadow-lg hover:scale-[1.02] transition"
+              className="mt-5 w-full rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 py-3 text-white font-semibold shadow-lg hover:scale-[1.02] transition"
             >
               View Submission Details
             </button>
@@ -117,16 +123,16 @@ export default function SuccessPage() {
           </div>
         )}
 
-        {/* loader */}
+        {/* smart loader */}
         {showLoader && (
-          <div className="relative z-10 mt-6">
+          <div className="mt-6">
             <p className="text-sm text-gray-600 mb-3">
-              ✨ Preparing your details...
+              ✨ Processing your submission details...
             </p>
 
             <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
               <div
-                className="bg-gradient-to-r from-violet-600 to-purple-600 h-3 transition-all duration-75"
+                className="bg-gradient-to-r from-violet-600 to-purple-600 h-3 transition-all duration-200"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -134,12 +140,16 @@ export default function SuccessPage() {
             <p className="mt-3 text-sm font-medium text-violet-600">
               {progress}% completed
             </p>
+
+            <p className="mt-2 text-xs text-gray-500">
+              Please wait while we fetch your latest submission info.
+            </p>
           </div>
         )}
 
         {/* details */}
-        {showDetails && (
-          <div className="relative z-10 mt-6 border-t border-violet-100 pt-6 text-left">
+        {showDetails && details && (
+          <div className="mt-6 border-t border-violet-100 pt-6 text-left">
             <h2 className="text-lg font-semibold text-violet-700 mb-4 text-center">
               📋 Submission Details
             </h2>
@@ -155,8 +165,7 @@ export default function SuccessPage() {
               <div className="rounded-2xl bg-purple-50 p-4 border border-purple-100">
                 <p className="text-sm text-gray-500">Queue Ahead</p>
                 <p className="text-lg font-semibold text-purple-700">
-                  {details.queueAhead} confession
-                  {details.queueAhead !== 1 ? 's' : ''}
+                  {details.queueAhead} confessions
                 </p>
               </div>
 
@@ -166,16 +175,6 @@ export default function SuccessPage() {
                   {details.eta}
                 </p>
               </div>
-            </div>
-
-            <div className="mt-5 rounded-2xl bg-green-50 border border-green-100 p-4 text-sm text-gray-600 leading-6">
-              ✅ Your confession is securely added to the posting queue and will
-              be published according to schedule.
-            </div>
-
-            <div className="mt-4 rounded-2xl bg-yellow-50 border border-yellow-100 p-4 text-sm text-gray-600 leading-6">
-              💜 Thank you for trusting Confession Wallah. Your secret is safe
-              with us.
             </div>
 
             <button
